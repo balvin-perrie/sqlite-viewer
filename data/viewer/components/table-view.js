@@ -10,6 +10,7 @@ class TableView extends HTMLElement {
       mode: 'closed'
     });
     shadow.innerHTML = `
+      <link rel="stylesheet" href="/data/viewer/prism/prism.css">
       <style>
         :host {
           --bg-white: #fff;
@@ -20,6 +21,7 @@ class TableView extends HTMLElement {
           --bg-hover: #f2fafe;
           --border: #cdcdcd;
           --error: red;
+          --search-height: 32px;
 
           font-family: inherit;
           font-size: inherit;
@@ -27,26 +29,11 @@ class TableView extends HTMLElement {
           display: flex;
           flex-direction: column;
         }
-        form {
-          position: sticky;
-          height: 28px;
-          top: 0;
-          background-color: var(--bg-white);
-          border-top: solid 1px var(--border);
-        }
-        input[type=search] {
-          bottom: 0;
-          width: 100%;
-          border: none;
-          height: 100%;
-          padding: 5px;
-          outline: none;
-          background-color: transparent;
-        }
         #table {
           overflow: auto;
           flex: 1;
           outline: none;
+          background-color: var(--bg-white);
         }
         table {
           min-width: 100%;
@@ -91,6 +78,41 @@ class TableView extends HTMLElement {
         .warning {
           font-style: italic;
         }
+        #search {
+          position: relative;
+          background-color: var(--bg-white);
+          border-top: solid 1px var(--border);
+          height: var(--search-height);
+        }
+        #search div,
+        #search input {
+          padding: 0 5px;
+          position: absolute;
+          top: 0;
+          left: 0;
+          height: 100%;
+          font-size: 13px;
+          font-family: Arial;
+        }
+        #search div {
+          pointer-events: none;
+          line-height: var(--search-height);
+          white-space: pre;
+        }
+        #search input {
+          width: 100%;
+          border: none;
+          outline: none;
+          background-color: transparent;
+          color: black;
+          -webkit-text-fill-color: transparent;
+        }
+        #search[data-overflow=true] input {
+          -webkit-text-fill-color: black;
+        }
+        #search[data-overflow=true] div {
+          opacity: 0;
+        }
       </style>
       <div id="table" tabindex="-1">
         <table>
@@ -100,8 +122,9 @@ class TableView extends HTMLElement {
           <tbody id="tbody"></tbody>
         </table>
       </div>
-      <form id="footer" title="Ctrl + E or Command + E">
-        <input type="search" id="search">
+      <form id="search" title="Ctrl + E or Command + E">
+        <input type="search" value="Test">
+        <div>Testing</div>
       </form>
     `;
     // elements
@@ -169,7 +192,7 @@ class TableView extends HTMLElement {
     }
     this.done = false;
     this.elements.tbody.textContent = '';
-    this.elements.search.value = statement;
+    this.print(statement, true);
     if (statement) {
       try {
         this.stmt = await db.prepare(statement, params);
@@ -208,6 +231,17 @@ class TableView extends HTMLElement {
       e.preventDefault();
     }
   }
+  print(statement, mirror = false) {
+    const Prism = window.Prism;
+    const parent = this.elements.search;
+    const code = Prism.highlight(statement, Prism.languages.sql, 'sql');
+    const div = parent.querySelector('div');
+    div.innerHTML = code;
+    if (mirror) {
+      this.elements.search.querySelector('input').value = statement;
+    }
+    parent.dataset.overflow = div.offsetWidth >= parent.offsetWidth - 40;
+  }
   click() {
     this.elements.table.focus();
   }
@@ -231,10 +265,14 @@ class TableView extends HTMLElement {
         this.click();
       }
     });
+    // prism
+    this.elements.search.querySelector('input').addEventListener('input', e => {
+      this.print(e.target.value);
+    });
     // search
-    this.elements.search.parentElement.addEventListener('submit', e => {
+    this.elements.search.addEventListener('submit', e => {
       e.preventDefault();
-      this.from(undefined, this.elements.search.value);
+      this.from(undefined, this.elements.search.querySelector('input').value);
       this.click();
     });
     // highlight

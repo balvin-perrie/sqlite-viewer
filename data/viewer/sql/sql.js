@@ -8,10 +8,14 @@ class SQL {
     return new Promise(resolve => {
       const worker = new Worker('sql/worker.js');
 
-      this.post = o => {
+      this.post = (o, progress) => {
         return new Promise((resolve, reject) => {
           o.mid = 'rqst:' + Math.random();
-          this.msgs[o.mid] = {resolve, reject};
+          this.msgs[o.mid] = {
+            resolve,
+            reject,
+            progress
+          };
           worker.postMessage(o);
         });
       };
@@ -23,13 +27,21 @@ class SQL {
         else if (data.mid) {
           const o = this.msgs[data.mid];
           if (o) {
-            if (data.error) {
-              o.reject(Error(data.error));
+            if (data.progress) {
+              if (o.progress) {
+                o.progress(data.progress);
+              }
+              return;
             }
             else {
-              o.resolve(data);
+              if (data.error) {
+                o.reject(Error(data.error));
+              }
+              else {
+                o.resolve(data);
+              }
+              delete this.msgs[data.mid];
             }
-            delete this.msgs[data.mid];
           }
         }
       };
@@ -40,7 +52,7 @@ class SQL {
       request: 'open',
       href: o.href,
       file: o.file
-    }).then(o => {
+    }, o.progress).then(o => {
       const id = o.id;
       return {
         prepare: (statement, params) => {

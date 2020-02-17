@@ -21,9 +21,24 @@ class ManagerView extends HTMLElement {
           justify-content: center;
           height: 100%;
           outline: none;
+          position: relative;
+        }
+        :host([data-ready="false"])::before {
+          content: 'Loading. Please wait...';
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          color: var(--bg-white);
+          background-color: rgba(0, 0, 0, 0.6);
+          z-index: 1;
+          padding: 10px;
         }
         h1 {
-          font-size: 18px;
+          font-size: 20px;
+          font-weight: 300;
+          margin-bottom: 20px;
         }
         button,
         input {
@@ -62,6 +77,21 @@ class ManagerView extends HTMLElement {
           grid-template-columns: 2fr 1fr;
           grid-column-gap: 10px;
         }
+        #href {
+          width: 100%;
+        }
+        #progress {
+          position: relative;
+        }
+        #progress::after {
+          content: '';
+          top: calc(100% - 2px);
+          left: 0;
+          position: absolute;
+          width: var(--width, 0);
+          height: 2px;
+          background: red;
+        }
         #grid-2 {
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
@@ -71,13 +101,15 @@ class ManagerView extends HTMLElement {
           align-self: center;
         }
       </style>
-      <h1>Welcome to SQLite Reader</h1>
+      <h1>Welcome to ${chrome.runtime.getManifest().name}</h1>
       <div id="methods" tabindex="-1">
         <button id="create" title="Ctrl + D or Command + D">Create new <u>D</u>atabase</button>
         <button id="open" title="Ctrl + O or Command + O"><u>O</u>pen existing Database</button>
         <form id="grid-1">
-          <input type="search" id="href" placeholder="Open Link: https://..." title="Ctrl + L or Command + L">
-          <button title="Ctrl + B or Command + B" id="sample">Sample Data<u>b</u>ase</button>
+          <div id="progress">
+            <input type="search" id="href" placeholder="Open Link: https://..." title="Ctrl + L or Command + L">
+          </div>
+          <button type="button" title="Ctrl + B or Command + B" id="sample">Sample Data<u>b</u>ase</button>
         </form>
         <div id="grid-2">
           <select id="dbs"></select>
@@ -90,6 +122,7 @@ class ManagerView extends HTMLElement {
       sample: shadow.getElementById('sample'),
       create: shadow.getElementById('create'),
       open: shadow.getElementById('open'),
+      progress: shadow.getElementById('progress'),
       href: shadow.getElementById('href'),
       dbs: shadow.getElementById('dbs'),
       duplicate: shadow.getElementById('duplicate'),
@@ -137,13 +170,14 @@ class ManagerView extends HTMLElement {
     const open = async (o, db) => {
       try {
         const append = db === undefined;
+        this.dataset.ready = false;
         await s.ready();
         db = db || await s.open(o);
         const div = document.createElement('div');
         div.title = o.name;
         const view = document.createElement('table-view');
         div.appendChild(view);
-        let statement = 'PRAGMA page_size';
+        let statement = `SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY 1`;
         const tables = await db.tables();
         if (tables.length) {
           const table = window.prompt('Select a table:\n\n' + tables.join(', '), tables[0]);
@@ -154,19 +188,23 @@ class ManagerView extends HTMLElement {
             return;
           }
         }
-        document.querySelector('tabs-view').appendChild(div);
+        const tabs = document.querySelector('tabs-view');
+        tabs.appendChild(div);
         await view.from(db, statement);
-        view.scrollIntoView();
+        this.dataset.ready = true;
+        tabs.active(div);
         if (append) {
           const option = document.createElement('option');
           option.db = db;
           option.value = option.textContent = o.name;
           this.elements.dbs.appendChild(option);
         }
+        tabs.navigate(div, 'panel', false);
       }
       catch (e) {
-        console.error(e);
+        this.dataset.ready = true;
         alert(e.message);
+        console.error(e);
       }
     };
     this.elements.create.addEventListener('click', () => {
@@ -178,18 +216,24 @@ class ManagerView extends HTMLElement {
       e.preventDefault();
       const {value} = this.elements.href;
       if (value) {
-        open({
+        chrome.permissions.request({
+          origins: [value]
+        }, granted => granted && open({
           name: value,
-          href: value
-        });
+          href: value,
+          progress: e => {
+            const width = e.loaded === e.total ? 0 : e.loaded / e.total * 100 + '%';
+            this.elements.progress.style.setProperty('--width', width);
+          }
+        }));
       }
+      return false;
     });
     this.elements.open.addEventListener('click', () => {
       const input = document.createElement('input');
       input.type = 'file';
       input.onchange = () => {
         const file = input.files[0];
-        console.log(file);
         open({
           name: file.name,
           file
@@ -217,8 +261,11 @@ class ManagerView extends HTMLElement {
       window.setTimeout(() => URL.revokeObjectURL(href), 1000);
     });
     this.elements.sample.addEventListener('click', () => {
-      this.elements.href.value = '/test.db';
-      window.setTimeout(() => this.elements.href.form().submit(), 100);
+      const href = chrome.runtime.getURL('/data/viewer/test.db');
+      open({
+        name: 'Test Database',
+        href
+      });
     });
   }
 }

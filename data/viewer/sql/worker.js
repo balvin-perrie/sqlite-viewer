@@ -11,17 +11,39 @@ initSqlJs().then(SQL => {
     ready: true
   });
   onmessage = ({data}) => {
-    const post = o => postMessage(Object.assign(data, o));
+    const post = o => postMessage(Object.assign({}, data, o));
     if (data.request === 'open') {
       const id = 'sql:' + Math.random();
       if (data.href) {
-        fetch(data.href).then(r => r.arrayBuffer()).then(ab => {
-          dbs[id] = new SQL.Database(new Uint8Array(ab));
-          post({id});
-        }).catch(e => {
-          console.error(e);
-          post({error: e.message});
-        });
+        try {
+          const req = new XMLHttpRequest();
+          req.responseType = 'arraybuffer';
+          req.open('GET', data.href, true);
+          req.onprogress = e => {
+            post({
+              progress: {
+                loaded: e.loaded,
+                total: e.total
+              }
+            });
+          };
+          req.onload = () => {
+            if (req.response) {
+              dbs[id] = new SQL.Database(new Uint8Array(req.response));
+              post({id});
+            }
+          };
+          req.onerror = e => post({error: e.message});
+          req.ontimeout = () => post({
+            error: 'request timeout'
+          });
+          req.send();
+        }
+        catch (e) {
+          post({
+            error: e.message
+          });
+        }
       }
       else if (data.file) {
         const reader = new FileReader();

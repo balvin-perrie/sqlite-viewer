@@ -1,10 +1,13 @@
 {
   "manifest_version": 2,
-  "version": "0.1.0",
+  "version": "0.1.2",
   "name": "SQLite Viewer",
   "description": "A tabular SQLite viewer and editor that supports opening of multiple databases",
   "permissions": [
     "storage"
+   ],
+  "optional_permissions": [
+    "*://*/*"
    ],
    "background": {
     "persistent": false,
@@ -13,6 +16,7 @@
     ]
   },
   "offline_enabled": true,
+  "homepage_url": "https://add0n.com/sqlite-viewer.html",
   "icons": {
     "16": "data/icons/16.png",
     "19": "data/icons/19.png",
