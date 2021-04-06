@@ -1,1 +1,0 @@
-../../../../components/tabs-view/tabs-view.js

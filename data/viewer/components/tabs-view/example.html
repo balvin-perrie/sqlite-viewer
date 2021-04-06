@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style type="text/css">
+    body {
+      font-size: 13px;
+      font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+      margin: 0;
+    }
+    tabs-view {
+      height: 120vh;
+    }
+  </style>
+</head>
+<body>
+  <tabs-view id="view" tabindex="0">
+    <div title="Tab 1">Div 1</div>
+    <div title="Tab 2" data-active="true">Div 2</div>
+    <div title="Tab 3">Div 3</div>
+    <div title="Tab 4">Div 4</div>
+    <div title="Tab 5">Div 5</div>
+    <div title="Tab 6">Div 6</div>
+    <div title="Tab 7">Div 7</div>
+    <div title="Tab 8">Div 8</div>
+  </tabs-view>
+  <script type="text/javascript">
+    document.getElementById('view').addEventListener('tabs-view::change', e => {
+      console.log(e.detail);
+    });
+  </script>
+
+  <script type="text/javascript" src="tabs-view.js"></script>
+</body>
+</html>
