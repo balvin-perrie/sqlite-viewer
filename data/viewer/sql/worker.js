@@ -1,7 +1,7 @@
 /* global importScripts, initSqlJs */
 'use strict';
 
-importScripts('sql-wasm.js');
+importScripts('lib/sql.js');
 
 const dbs = {};
 const statements = {};
