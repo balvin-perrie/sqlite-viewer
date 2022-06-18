@@ -1,12 +1,14 @@
 /* global importScripts, initSqlJs */
 'use strict';
 
-importScripts('lib/sql.js');
+importScripts('lib/sql-wasm.js');
 
 const dbs = {};
 const statements = {};
 
-initSqlJs().then(SQL => {
+initSqlJs({
+  locateFile: name => 'lib/' + name
+}).then(SQL => {
   postMessage({
     ready: true
   });

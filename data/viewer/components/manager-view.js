@@ -62,6 +62,10 @@ class ManagerView extends HTMLElement {
           opacity: 0.5;
           pointer-events: none;
         }
+        a {
+          text-decoration: none;
+          color: #0074cc;
+        }
         #methods {
           min-width: 50vw;
           max-width: 90vw;
@@ -71,6 +75,11 @@ class ManagerView extends HTMLElement {
         }
         #methods > * {
           margin-bottom: 10px;
+        }
+        #open-container {
+          display: grid;
+          grid-template-columns: 2fr 1fr;
+          grid-column-gap: 10px;
         }
         #grid-1 {
           display: grid;
@@ -100,11 +109,17 @@ class ManagerView extends HTMLElement {
         label {
           align-self: center;
         }
+        #rate.highlight {
+          color: #c65b00;
+        }
       </style>
-      <h1>Welcome to ${chrome.runtime.getManifest().name}</h1>
+      <h1>Welcome to <a href="${chrome.runtime.getManifest().homepage_url}" target=_blank>${chrome.runtime.getManifest().name}</a></h1>
       <div id="methods" tabindex="-1">
         <button id="create" title="Ctrl + D or Command + D">Create new <u>D</u>atabase</button>
-        <button id="open" title="Ctrl + O or Command + O"><u>O</u>pen existing Database</button>
+        <div id="open-container">
+          <button id="open" title="Ctrl + O or Command + O"><u>O</u>pen existing Database</button>
+          <button id="rate" title="Rate Me">Rate Me</button>
+        </div>
         <form id="grid-1">
           <div id="progress">
             <input type="search" id="href" placeholder="Open Link: https://..." title="Ctrl + L or Command + L">
@@ -126,7 +141,8 @@ class ManagerView extends HTMLElement {
       href: shadow.getElementById('href'),
       dbs: shadow.getElementById('dbs'),
       duplicate: shadow.getElementById('duplicate'),
-      save: shadow.getElementById('save')
+      save: shadow.getElementById('save'),
+      rate: shadow.getElementById('rate')
     };
     this.setAttribute('tabindex', '-1');
   }
@@ -218,14 +234,16 @@ class ManagerView extends HTMLElement {
       if (value) {
         chrome.permissions.request({
           origins: [value]
-        }, granted => granted && open({
-          name: value,
-          href: value,
-          progress: e => {
-            const width = e.loaded === e.total ? 0 : e.loaded / e.total * 100 + '%';
-            this.elements.progress.style.setProperty('--width', width);
-          }
-        }));
+        }, () => {
+          open({
+            name: value,
+            href: value,
+            progress: e => {
+              const width = e.loaded === e.total ? 0 : e.loaded / e.total * 100 + '%';
+              this.elements.progress.style.setProperty('--width', width);
+            }
+          });
+        });
       }
       return false;
     });
@@ -241,6 +259,45 @@ class ManagerView extends HTMLElement {
       };
       input.click();
     });
+
+    if (Math.random() > 0.5) {
+      chrome.storage.local.get({
+        rate: true
+      }, prefs => {
+        if (prefs.rate) {
+          this.elements.rate.classList.add('highlight');
+        }
+      });
+    }
+    this.elements.rate.addEventListener('click', () => {
+      let url = 'https://chrome.google.com/webstore/detail/sqlite-viewer/golagekponhmgfoofmlepfobdmhpajia/reviews';
+      if (/Edg/.test(navigator.userAgent)) {
+        url = 'https://microsoftedge.microsoft.com/addons/detail/gljmogcmgknikhkbejpiapnakflhnnfe';
+      }
+      else if (/Firefox/.test(navigator.userAgent)) {
+        url = 'https://addons.mozilla.org/firefox/addon/sqlite-viewer/reviews/';
+      }
+
+      chrome.storage.local.set({
+        rate: false
+      }, () => chrome.tabs.create({
+        url
+      }));
+    });
+
+    window.addEventListener('dragover', e => e.preventDefault());
+    window.addEventListener('drop', e => {
+      e.preventDefault();
+      if (e.dataTransfer.files.length) {
+        const file = e.dataTransfer.files[0];
+        open({
+          name: file.name,
+          file
+        });
+      }
+    });
+
+
     this.elements.duplicate.addEventListener('click', () => {
       const db = this.elements.dbs.selectedOptions[0].db;
       open({

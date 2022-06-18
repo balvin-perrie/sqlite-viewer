@@ -1,7 +1,8 @@
 'use strict';
 
-chrome.browserAction.onClicked.addListener(() => chrome.tabs.create({
-  url: 'data/viewer/index.html'
+chrome.action.onClicked.addListener(tab => chrome.tabs.create({
+  url: '/data/viewer/index.html',
+  index: tab.index + 1
 }));
 
 /* FAQs & Feedback */
