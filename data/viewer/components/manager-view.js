@@ -193,16 +193,18 @@ class ManagerView extends HTMLElement {
         div.title = o.name;
         const view = document.createElement('table-view');
         div.appendChild(view);
-        let statement = `SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY 1`;
+        let statement =
+          `SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' ORDER BY 1`;
         const tables = await db.tables();
+
         if (tables.length) {
           const table = window.prompt('Select a table:\n\n' + tables.join(', '), tables[0]);
           if (table) {
             statement = `select * from ${table}`;
           }
-          else {
-            return;
-          }
+        }
+        else {
+          view.help();
         }
         const tabs = document.querySelector('tabs-view');
         tabs.appendChild(div);

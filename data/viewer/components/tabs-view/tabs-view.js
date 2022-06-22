@@ -98,11 +98,14 @@ class TabsView extends HTMLElement {
   }
   keypress(e) {
     const meta = e.metaKey || e.ctrlKey;
+    console.log(e.metaKey, e.code, e);
+
     if (e.code.startsWith('Digit') && meta) {
       if (e.preventDefault) {
         e.preventDefault();
       }
       const input = this.elements.tabs.children[Number(e.key) - 1];
+      console.log(input);
       if (input) {
         input.click();
       }

@@ -113,6 +113,28 @@ class TableView extends HTMLElement {
         #search[data-overflow=true] div {
           opacity: 0;
         }
+        #help {
+          flex: 2;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+        }
+        #help h2 {
+          font-size: 120%;
+        }
+        #help code {
+          margin: 10px;
+          display: block;
+        }
+        #help a {
+          color: #0277aa;
+          text-decoration: none;
+          font-weight: bold;
+        }
+        #help.hidden {
+          display: none;
+        }
       </style>
       <div id="table" tabindex="-1">
         <table>
@@ -121,6 +143,13 @@ class TableView extends HTMLElement {
           </thead>
           <tbody id="tbody"></tbody>
         </table>
+      </div>
+      <div id="help" class="hidden">
+        <div>
+          <h2><a target="_blank" href="https://add0n.com/sqlite-viewer.html#faq6">Help</a></h2>
+          <p>Write an SQLite statement on the input and press the "Enter" key to execute it. If the output has a value, it will be displayed in this view.</p>
+          <a href="#" id="sample">Insert a sample table</a> | <a target="_blank" href="https://add0n.com/sqlite-viewer.html#faq3">Supported Keyboard Shortcuts</a>
+        </div>
       </div>
       <form id="search" title="Ctrl + E or Command + E">
         <input type="search" value="Test">
@@ -132,7 +161,8 @@ class TableView extends HTMLElement {
       table: shadow.getElementById('table'),
       thead: shadow.getElementById('thead'),
       tbody: shadow.getElementById('tbody'),
-      search: shadow.getElementById('search')
+      search: shadow.getElementById('search'),
+      help: shadow.getElementById('help')
     };
   }
   header(row) {
@@ -149,6 +179,9 @@ class TableView extends HTMLElement {
       f.appendChild(th);
     });
     tr.appendChild(f);
+  }
+  help(show = true) {
+    this.elements.help.classList[show ? 'remove' : 'add']('hidden');
   }
   body(o) {
     const f = document.createDocumentFragment();
@@ -186,6 +219,16 @@ class TableView extends HTMLElement {
     this.body(o);
   }
   async from(db = this.db, statement, params) {
+    // dealing with multiple statements
+    const s = statement.split(';').filter(a => a);
+    if (s.length > 1) {
+      for (let i = 0; i < s.length; i += 1) {
+        await this.from(db, s[i], params);
+      }
+
+      return;
+    }
+
     this.db = db;
     if (this.stmt) {
       this.stmt.delete();
@@ -200,11 +243,12 @@ class TableView extends HTMLElement {
         if (o.results.length) {
           this.header(o.results[0]);
           this.body(o);
+          this.help(false);
         }
         else {
           this.elements.thead.textContent = '';
           this.message({
-            message: 'No Result!'
+            message: `No output for "${statement}" statement`
           });
         }
       }
@@ -225,9 +269,10 @@ class TableView extends HTMLElement {
       this.click();
     }
     else if (e.code === 'KeyE' && meta) {
-      this.elements.search.click();
-      this.elements.search.focus();
-      this.elements.search.select();
+      const n = this.elements.search.querySelector('input');
+      n.click();
+      n.focus();
+      n.select();
       e.preventDefault();
     }
   }
@@ -269,6 +314,9 @@ class TableView extends HTMLElement {
     this.elements.search.querySelector('input').addEventListener('input', e => {
       this.print(e.target.value);
     });
+    // this.elements.search.querySelector('input').addEventListener('focus', e => {
+    //   e.target.select();
+    // });
     // search
     this.elements.search.addEventListener('submit', e => {
       e.preventDefault();
@@ -282,6 +330,17 @@ class TableView extends HTMLElement {
         tr.classList[tr.classList.contains('selected') ? 'remove' : 'add']('selected');
       }
     });
+    // help
+    this.elements.help.querySelector('#sample').onclick = e => {
+      e.preventDefault();
+      this.from(undefined, [
+        `CREATE TABLE sample_table (id INTEGER, content TEXT)`,
+        `INSERT INTO sample_table (id, content) VALUES (1, "This is Line #1"), (2, "This is Line #2")`,
+        `INSERT INTO sample_table (id, content) VALUES (3, "This is Line #3"), (4, "This is Line #4")`,
+        `INSERT INTO sample_table (id, content) VALUES (5, "This is Line #1"), (6, "This is Line #6")`,
+        `SELECT * from sample_table`
+      ].join(';'));
+    };
   }
 }
 window.customElements.define('table-view', TableView);
